@@ -22,6 +22,7 @@ export class WidgytsCanvasModel extends CanvasModel {
       colormaps: null,
       frb_model: null,
       variable_mesh_model: null,
+      current_field: 'ones',
       image_bitmap: undefined,
       image_data: undefined,
       _dirty_frb: false,
@@ -35,6 +36,7 @@ export class WidgytsCanvasModel extends CanvasModel {
     this.frb_model = this.get('frb_model');
     this.variable_mesh_model = this.get('variable_mesh_model');
     this.colormaps = this.get('colormaps');
+    this.current_field = this.get('current_field');
   }
 
   static serializers: ISerializers = {
@@ -51,6 +53,7 @@ export class WidgytsCanvasModel extends CanvasModel {
   frb_model: FRBModel;
   variable_mesh_model: VariableMeshModel;
   colormaps: ColormapContainerModel;
+  current_field: string;
   _dirty_frb: boolean;
   _dirty_bitmap: boolean;
 
