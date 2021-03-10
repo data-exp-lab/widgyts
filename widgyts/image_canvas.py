@@ -20,6 +20,15 @@ from . import EXTENSION_VERSION
 
 
 @ipywidgets.register
+class FieldArrayModel(ipywidgets.Widget):
+    _model_name = traitlets.Unicode("FieldArrayModel").tag(sync=True)
+    _model_module = traitlets.Unicode("@yt-project/yt-widgets").tag(sync=True)
+    _model_module_version = traitlets.Unicode(EXTENSION_VERSION).tag(sync=True)
+    name = traitlets.Unicode("").tag(sync=True)
+    array = traitlets.Bytes(allow_none=False).tag(sync=True, **bytes_serialization)
+
+
+@ipywidgets.register
 class VariableMeshModel(ipywidgets.Widget):
     _model_name = traitlets.Unicode("VariableMeshModel").tag(sync=True)
     _model_module = traitlets.Unicode("@yt-project/yt-widgets").tag(sync=True)
@@ -28,7 +37,11 @@ class VariableMeshModel(ipywidgets.Widget):
     py = traitlets.Bytes(allow_none=False).tag(sync=True, **bytes_serialization)
     pdx = traitlets.Bytes(allow_none=False).tag(sync=True, **bytes_serialization)
     pdy = traitlets.Bytes(allow_none=False).tag(sync=True, **bytes_serialization)
-    val = traitlets.Bytes(allow_none=False).tag(sync=True, **bytes_serialization)
+    data_source = traitlets.Any(allow_none=True).tag(sync=False)
+    field_values = traitlets.Dict(
+        key_trait=traitlets.Unicode(allow_none=False),
+        value_trait=traitlets.Instance(FieldArrayModel),
+    )
 
     @property
     def _px(self):
@@ -46,9 +59,14 @@ class VariableMeshModel(ipywidgets.Widget):
     def _pdy(self):
         return np.frombuffer(self.pdy, dtype="f8")
 
-    @property
-    def _val(self):
-        return np.frombuffer(self.val, dtype="f8")
+    def add_field(self, field_name):
+        if field_name in self.field_values or self.data_source is None:
+            return
+        new_field = FieldArrayModel(name=field_name, array=self.data_source[field_name])
+        new_field_values = {field_name: new_field}
+        new_field_values.update(self.field_values)
+        # Do an update of the trait!
+        self.field_values = new_field_values
 
 
 @ipywidgets.register
@@ -127,6 +145,7 @@ class WidgytsCanvasViewer(ipycanvas.Canvas):
     colormaps = traitlets.Instance(ColormapContainer).tag(
         sync=True, **widget_serialization
     )
+    current_field = traitlets.Unicode("ones", allow_none=False).tag(sync=True)
     frb_model = traitlets.Instance(FRBModel).tag(sync=True, **widget_serialization)
     variable_mesh_model = traitlets.Instance(VariableMeshModel).tag(
         sync=True, **widget_serialization
@@ -138,6 +157,12 @@ class WidgytsCanvasViewer(ipycanvas.Canvas):
     _view_name = traitlets.Unicode("WidgytsCanvasView").tag(sync=True)
     _view_module = traitlets.Unicode("@yt-project/yt-widgets").tag(sync=True)
     _view_module_version = traitlets.Unicode(EXTENSION_VERSION).tag(sync=True)
+
+    @traitlets.observe("current_field")
+    def _current_field_changed(self, change):
+        if change["new"] in self.variable_mesh_model.field_values:
+            return
+        self.variable_mesh_model.add_field(change["new"])
 
     @traitlets.default("layout")
     def _layout_default(self):
