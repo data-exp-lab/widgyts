@@ -3,11 +3,8 @@ import {
   ISerializers,
   unpack_models
 } from '@jupyter-widgets/base';
-import { VariableMesh } from '@data-exp-lab/yt-tools';
 import { MODULE_NAME, MODULE_VERSION } from './version';
-import { f64Serializer } from './utils';
-
-const yt_tools = await import('@data-exp-lab/yt-tools');
+import { f64Serializer, yt_tools, VariableMesh } from './utils';
 
 /*
  * We have this as we can potentially have more than one FRB for a variable mesh
@@ -21,7 +18,7 @@ export class FieldArrayModel extends DOMWidgetModel {
       _model_name: FieldArrayModel.model_name,
       _model_module: FieldArrayModel.model_module,
       _model_module_version: FieldArrayModel.model_module_version,
-      name: null,
+      field_name: null,
       array: null
     };
   }
@@ -29,7 +26,7 @@ export class FieldArrayModel extends DOMWidgetModel {
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   initialize(attributes: any, options: any): void {
     super.initialize(attributes, options);
-    this.name = this.get('name');
+    this.field_name = this.get('field_name');
     this.array = this.get('array');
   }
 
@@ -38,7 +35,7 @@ export class FieldArrayModel extends DOMWidgetModel {
     array: f64Serializer
   };
 
-  name: string;
+  field_name: string;
   array: Float64Array;
   static model_name = 'FieldArrayModel';
   static model_module = MODULE_NAME;
@@ -56,8 +53,8 @@ export class VariableMeshModel extends DOMWidgetModel {
       pdx: null,
       py: null,
       pdy: null,
-      field_values: {},
-      variable_mesh: null
+      field_values: [],
+      variable_mesh: undefined
     };
   }
 
@@ -76,11 +73,11 @@ export class VariableMeshModel extends DOMWidgetModel {
 
   updateFieldValues(): void {
     this.field_values = this.get('field_values');
-    this.field_values.forEach((value: FieldArrayModel, key: string) => {
-      if (!this.variable_mesh.has_field(key)) {
-        this.variable_mesh.add_field(key, value.array);
+    for (const field of this.field_values) {
+      if (!this.variable_mesh.has_field(field.field_name)) {
+        this.variable_mesh.add_field(field.field_name, field.array);
       }
-    });
+    }
   }
 
   static serializers: ISerializers = {
@@ -96,7 +93,7 @@ export class VariableMeshModel extends DOMWidgetModel {
   pdx: Float64Array;
   py: Float64Array;
   pdy: Float64Array;
-  field_values: Map<string, FieldArrayModel>;
+  field_values: Array<FieldArrayModel>;
   variable_mesh: VariableMesh;
 
   static model_name = 'VariableMeshModel';

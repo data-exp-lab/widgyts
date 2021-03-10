@@ -3,10 +3,9 @@ import {
   ISerializers,
   unpack_models
 } from '@jupyter-widgets/base';
-import { FixedResolutionBuffer } from '@data-exp-lab/yt-tools';
 import { MODULE_NAME, MODULE_VERSION } from './version';
 import { VariableMeshModel } from './variable_mesh';
-const yt_tools = await import('@data-exp-lab/yt-tools');
+import { yt_tools, FixedResolutionBuffer } from './utils';
 
 export interface IFRBViewBounds {
   x_low: number;
@@ -79,7 +78,11 @@ export class FRBModel extends DOMWidgetModel {
       bounds.y_low,
       bounds.y_high
     );
-    this.frb.deposit(variable_mesh_model.variable_mesh, this.data_buffer, current_field);
+    this.frb.deposit(
+      variable_mesh_model.variable_mesh,
+      this.data_buffer,
+      current_field
+    );
     return this.data_buffer;
   }
 

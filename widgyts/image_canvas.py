@@ -24,8 +24,12 @@ class FieldArrayModel(ipywidgets.Widget):
     _model_name = traitlets.Unicode("FieldArrayModel").tag(sync=True)
     _model_module = traitlets.Unicode("@yt-project/yt-widgets").tag(sync=True)
     _model_module_version = traitlets.Unicode(EXTENSION_VERSION).tag(sync=True)
-    name = traitlets.Unicode("").tag(sync=True)
+    field_name = traitlets.Unicode("").tag(sync=True)
     array = traitlets.Bytes(allow_none=False).tag(sync=True, **bytes_serialization)
+
+    @property
+    def _array(self):
+        return np.frombuffer(self.array, dtype="f8")
 
 
 @ipywidgets.register
@@ -38,9 +42,8 @@ class VariableMeshModel(ipywidgets.Widget):
     pdx = traitlets.Bytes(allow_none=False).tag(sync=True, **bytes_serialization)
     pdy = traitlets.Bytes(allow_none=False).tag(sync=True, **bytes_serialization)
     data_source = traitlets.Any(allow_none=True).tag(sync=False)
-    field_values = traitlets.Dict(
-        key_trait=traitlets.Unicode(allow_none=False),
-        value_trait=traitlets.Instance(FieldArrayModel),
+    field_values = traitlets.List(trait=traitlets.Instance(FieldArrayModel)).tag(
+        sync=True, **widget_serialization
     )
 
     @property
@@ -60,11 +63,15 @@ class VariableMeshModel(ipywidgets.Widget):
         return np.frombuffer(self.pdy, dtype="f8")
 
     def add_field(self, field_name):
-        if field_name in self.field_values or self.data_source is None:
+        if (
+            any(_.field_name == field_name for _ in self.field_values)
+            or self.data_source is None
+        ):
             return
-        new_field = FieldArrayModel(name=field_name, array=self.data_source[field_name])
-        new_field_values = {field_name: new_field}
-        new_field_values.update(self.field_values)
+        new_field = FieldArrayModel(
+            name=field_name, array=self.data_source[field_name].tobytes()
+        )
+        new_field_values = self.field_values + [new_field]
         # Do an update of the trait!
         self.field_values = new_field_values
 
@@ -206,8 +213,13 @@ class WidgytsCanvasViewer(ipycanvas.Canvas):
             description="colormap",
             value="viridis",
         )
-        mi = self.variable_mesh_model._val.min()
-        ma = self.variable_mesh_model._val.max()
+        vals = [
+            _
+            for _ in self.variable_mesh_model.field_values
+            if _.field_name == self.current_field
+        ][0]._array
+        mi = vals.min()
+        ma = vals.max()
         min_val = ipywidgets.BoundedFloatText(
             description="lower colorbar bound:", value=mi, min=mi, max=ma
         )
@@ -299,8 +311,9 @@ class WidgytsCanvasViewer(ipycanvas.Canvas):
     @classmethod
     def from_obj(cls, obj, field="density"):
         vm = {_: obj[_].tobytes() for _ in ("px", "py", "pdx", "pdy")}
-        vmm = VariableMeshModel(**vm, data_source=obj)
-        vmm.add_field(field)
+        # Bootstrap our field array model
+        fv = [FieldArrayModel(field_name=field, array=obj[field].tobytes())]
+        vmm = VariableMeshModel(**vm, data_source=obj, field_values=fv)
         frb = FRBModel(variable_mesh_model=vmm)
         cmc = ColormapContainer()
         mi, ma = obj[field].min(), obj[field].max()
