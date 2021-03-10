@@ -67,7 +67,8 @@ export class FRBModel extends DOMWidgetModel {
   }
 
   async depositDataBuffer(
-    variable_mesh_model: VariableMeshModel
+    variable_mesh_model: VariableMeshModel,
+    current_field: string
   ): Promise<Float64Array> {
     const bounds: IFRBViewBounds = this.calculateViewBounds();
     this.frb = new yt_tools.FixedResolutionBuffer(
@@ -78,7 +79,7 @@ export class FRBModel extends DOMWidgetModel {
       bounds.y_low,
       bounds.y_high
     );
-    this.frb.deposit(variable_mesh_model.variable_mesh, this.data_buffer);
+    this.frb.deposit(variable_mesh_model.variable_mesh, this.data_buffer, current_field);
     return this.data_buffer;
   }
 

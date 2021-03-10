@@ -230,7 +230,7 @@ export class WidgytsCanvasView extends CanvasView {
   }
 
   regenerateBuffer(): void {
-    this.model.frb_model.depositDataBuffer(this.model.variable_mesh_model);
+    this.model.frb_model.depositDataBuffer(this.model.variable_mesh_model, this.model.current_field);
     this.model.set('_dirty_frb', false);
     this.model.set('_dirty_bitmap', true);
   }
