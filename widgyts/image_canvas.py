@@ -299,8 +299,8 @@ class WidgytsCanvasViewer(ipycanvas.Canvas):
     @classmethod
     def from_obj(cls, obj, field="density"):
         vm = {_: obj[_].tobytes() for _ in ("px", "py", "pdx", "pdy")}
-        vm["val"] = obj[field].tobytes()
-        vmm = VariableMeshModel(**vm)
+        vmm = VariableMeshModel(**vm, data_source=obj)
+        vmm.add_field(field)
         frb = FRBModel(variable_mesh_model=vmm)
         cmc = ColormapContainer()
         mi, ma = obj[field].min(), obj[field].max()
@@ -310,6 +310,7 @@ class WidgytsCanvasViewer(ipycanvas.Canvas):
             frb_model=frb,
             variable_mesh_model=vmm,
             colormaps=cmc,
+            current_field=field,
         )
         return wc
 
